@@ -1,0 +1,14 @@
+DO $$ BEGIN CREATE TYPE user_role AS ENUM ('admin', 'member'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE TABLE IF NOT EXISTS users (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), email text NOT NULL UNIQUE, name text NOT NULL, password_hash text NOT NULL, role user_role NOT NULL DEFAULT 'member', active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS sessions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash text NOT NULL UNIQUE, expires_at timestamptz NOT NULL, ip text, user_agent text, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS auth_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), email text NOT NULL, ip text NOT NULL, success boolean NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS ips (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES users(id), name text NOT NULL, positioning text, audience text, content_pillars jsonb, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS accounts (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), ip_id uuid NOT NULL REFERENCES ips(id) ON DELETE CASCADE, platform text NOT NULL, handle text NOT NULL, followers integer DEFAULT 0);
+CREATE TABLE IF NOT EXISTS contents (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), ip_id uuid NOT NULL REFERENCES ips(id) ON DELETE CASCADE, title text NOT NULL, status text NOT NULL, format text, published_at timestamptz);
+CREATE TABLE IF NOT EXISTS metrics (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), content_id uuid NOT NULL REFERENCES contents(id) ON DELETE CASCADE, impressions integer DEFAULT 0, engagements integer DEFAULT 0, leads integer DEFAULT 0, revenue numeric(14,2) DEFAULT 0, captured_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS model_configs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES users(id), provider text NOT NULL, model text NOT NULL, is_default boolean DEFAULT false);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_expires ON sessions(token_hash, expires_at);
+CREATE INDEX IF NOT EXISTS idx_auth_events_lookup ON auth_events(email, ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_accounts_ip_id ON accounts(ip_id);
+CREATE INDEX IF NOT EXISTS idx_contents_ip_status ON contents(ip_id, status);
+CREATE INDEX IF NOT EXISTS idx_metrics_content_captured ON metrics(content_id, captured_at);

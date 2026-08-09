@@ -2,31 +2,36 @@
 
 面向个人 IP 与自媒体团队的内容经营系统，连接 IP 定位、选题策划、内容生产、素材管理、账号矩阵、获客转化和 AI 数据决策。
 
-## 当前能力
+## 自托管架构
 
-- 自媒体经营数据总览
-- 内容价值与账号矩阵分析
-- AI 经营建议与行动任务
-- OpenAI、Anthropic、Gemini、DeepSeek 多模型切换
-- 统一服务端大模型 API 路由
-- Cloudflare D1 数据库与 R2 素材存储结构
-- 响应式网页界面
+- Next.js 16 应用服务
+- PostgreSQL 17 持久化数据库
+- Nginx 反向代理
+- Docker Compose 统一编排
+- Argon2 密码哈希与数据库会话
+- 管理员/成员角色、成员停用与登录限流
 
-## 本地运行
+数据库只在 Docker 内部网络开放，不映射公网端口。所有商用模型密钥通过服务器环境变量注入，不写入代码或数据库。
 
-需要 Node.js 22.13 或更高版本。
-
-```bash
-npm install
-npm run dev
-```
-
-复制 `.env.example` 为本地环境配置文件，并在服务端填写需要使用的模型 API 密钥。不要将真实密钥提交到版本库。
-
-## 构建
+## 本地开发
 
 ```bash
-npm run build
+pnpm install
+pnpm dev
 ```
 
-项目采用 Vinext 构建，可部署至 Cloudflare Workers 兼容环境。
+本地需提供可连接的 PostgreSQL，并将 `.env.example` 复制为 `.env` 后修改配置。
+
+## 阿里云部署
+
+服务器需安装 Docker Engine 与 Docker Compose 插件：
+
+```bash
+cp .env.example .env
+# 修改 .env，至少设置数据库强密码和访问地址
+docker compose up -d --build
+```
+
+首次打开网站时会自动进入管理员初始化页面。第一位用户成为管理员，此后初始化入口自动关闭。
+
+生产环境建议绑定域名并启用 HTTPS，只开放安全组的 `22`、`80`、`443` 端口，PostgreSQL 的 `5432` 不对公网开放。
