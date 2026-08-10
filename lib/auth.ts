@@ -25,6 +25,9 @@ export async function createSession(userId: string) {
 }
 
 export async function getCurrentUser() {
+  if (process.env.LOCAL_DEMO_MODE === "true") {
+    return { id: "00000000-0000-0000-0000-000000000001", email: "demo@xuzhang.local", name: "林野", role: "admin" as const, active: true };
+  }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const rows = await db.select({ id: users.id, email: users.email, name: users.name, role: users.role, active: users.active })

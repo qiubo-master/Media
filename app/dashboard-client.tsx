@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 const nav = ["经营总览", "IP定位", "选题策划", "内容生产", "素材资产", "账号矩阵", "获客中心", "客户服务", "数据洞察"];
 
@@ -50,7 +51,7 @@ export default function DashboardClient({ userName = "林野", isAdmin = false }
           <p className="nav-label">经营转化</p>
           {nav.slice(5).map((item, i) => <button key={item} onClick={() => setActive(item)} className={active === item ? "active" : ""}><span>{["◉", "⌁", "♡", "⌁"][i]}</span>{item}</button>)}
         </nav>
-        <div className="sidebar-bottom">{isAdmin && <a className="admin-link" href="/admin/users">♙　用户与权限管理</a>}<button onClick={() => setPanel(true)}>⚙　模型与系统设置</button><form action="/api/auth/logout" method="post"><button type="submit">↪　退出登录</button></form><div className="usage"><span>本月 AI 用量</span><b>68%</b><i><u /></i><small>68.2万 / 100万 Tokens</small></div></div>
+        <div className="sidebar-bottom">{isAdmin && <Link className="admin-link" href="/admin/users">♙　用户与权限管理</Link>}<button onClick={() => setPanel(true)}>⚙　模型与系统设置</button><form action="/api/auth/logout" method="post"><button type="submit">↪　退出登录</button></form><div className="usage"><span>本月 AI 用量</span><b>68%</b><i><u /></i><small>68.2万 / 100万 Tokens</small></div></div>
       </aside>
 
       <section className="content">
