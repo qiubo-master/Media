@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 
 const nav = ["经营总览", "IP定位", "选题策划", "内容生产", "素材资产", "账号矩阵", "获客中心", "客户服务", "数据洞察"];
+const navPaths: Record<string, string> = { "IP定位": "/modules/positioning", "选题策划": "/modules/topics", "内容生产": "/modules/content", "素材资产": "/modules/assets", "账号矩阵": "/accounts", "获客中心": "/modules/leads", "客户服务": "/modules/service", "数据洞察": "/modules/insights" };
 
 const tasks = [
   { title: "发布｜小红书：普通人做IP最容易踩的3个坑", meta: "10:30 · 主理人IP", tone: "purple" },
@@ -24,7 +25,7 @@ const providers = [
   { id: "deepseek", name: "DeepSeek", models: ["deepseek-chat", "deepseek-reasoner"] },
 ];
 
-export default function DashboardClient({ userName = "林野", isAdmin = false }: { userName?: string; isAdmin?: boolean }) {
+export default function DashboardClient({ userName = "林野", isAdmin = false, stats = { followers: 0, views: 0, leads: 0, revenue: 0 } }: { userName?: string; isAdmin?: boolean; stats?: { followers: number; views: number; leads: number; revenue: number } }) {
   const [active, setActive] = useState("经营总览");
   const [range, setRange] = useState("近7天");
   const [provider, setProvider] = useState("openai");
@@ -47,11 +48,11 @@ export default function DashboardClient({ userName = "林野", isAdmin = false }
           <p className="nav-label">工作空间</p>
           {nav.slice(0, 1).map((item) => <button key={item} onClick={() => setActive(item)} className={active === item ? "active" : ""}><span>⌂</span>{item}</button>)}
           <p className="nav-label">内容增长</p>
-          {nav.slice(1, 5).map((item, i) => <button key={item} onClick={() => setActive(item)} className={active === item ? "active" : ""}><span>{["◎", "◇", "✦", "▧"][i]}</span>{item}{item === "选题策划" && <em>12</em>}</button>)}
+          {nav.slice(1, 5).map((item, i) => <Link className="admin-link" href={navPaths[item]} key={item}><span>{["◎", "◇", "✦", "▧"][i]}</span>　{item}</Link>)}
           <p className="nav-label">经营转化</p>
-          {nav.slice(5).map((item, i) => <button key={item} onClick={() => setActive(item)} className={active === item ? "active" : ""}><span>{["◉", "⌁", "♡", "⌁"][i]}</span>{item}</button>)}
+          {nav.slice(5).map((item, i) => <Link className="admin-link" href={navPaths[item]} key={item}><span>{["◉", "⌁", "♡", "⌁"][i]}</span>　{item}</Link>)}
         </nav>
-        <div className="sidebar-bottom">{isAdmin && <Link className="admin-link" href="/admin/users">♙　用户与权限管理</Link>}<button onClick={() => setPanel(true)}>⚙　模型与系统设置</button><form action="/api/auth/logout" method="post"><button type="submit">↪　退出登录</button></form><div className="usage"><span>本月 AI 用量</span><b>68%</b><i><u /></i><small>68.2万 / 100万 Tokens</small></div></div>
+        <div className="sidebar-bottom"><Link className="admin-link" href="/accounts">▦　账号矩阵与数据上传</Link>{isAdmin && <Link className="admin-link" href="/admin/users">♙　用户与权限管理</Link>}<button onClick={() => setPanel(true)}>⚙　模型与系统设置</button><form action="/api/auth/logout" method="post"><button type="submit">↪　退出登录</button></form><div className="usage"><span>本月 AI 用量</span><b>68%</b><i><u /></i><small>68.2万 / 100万 Tokens</small></div></div>
       </aside>
 
       <section className="content">
@@ -61,10 +62,10 @@ export default function DashboardClient({ userName = "林野", isAdmin = false }
           <div className="welcome"><div><p>你的内容经营工作台</p><h1>你好，{userName} <span>👋</span></h1><h2>这是你的内容生意全景，今天有 <b>3 件事</b>值得优先处理。</h2></div><div className="range">{["近7天", "近30天", "本季度"].map(r => <button onClick={() => setRange(r)} className={range === r ? "active" : ""} key={r}>{r}</button>)}</div></div>
 
           <section className="hero-grid">
-            <article className="kpi-card"><div className="kpi-head"><span>总粉丝</span><i>较上期</i></div><strong>128,640</strong><p className="up">↗ 12.6% <span>净增 3,842</span></p><div className="spark purple"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article className="kpi-card"><div className="kpi-head"><span>内容曝光</span><i>全平台</i></div><strong>286.4万</strong><p className="up">↗ 18.3% <span>高于近30日均值</span></p><div className="spark blue"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article className="kpi-card"><div className="kpi-head"><span>有效线索</span><i>私域获客</i></div><strong>186</strong><p className="up">↗ 24.1% <span>其中高意向 42</span></p><div className="spark green"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article className="kpi-card revenue"><div className="kpi-head"><span>内容归因收入</span><i>已确认</i></div><strong>¥ 84,260</strong><p className="up">↗ 16.8% <span>ROI 4.7</span></p><div className="spark coral"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
+            <article className="kpi-card"><div className="kpi-head"><span>总粉丝</span><i>实时账号数据</i></div><strong>{stats.followers.toLocaleString()}</strong><p className="up"><span>来自账号矩阵</span></p><div className="spark purple"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
+            <article className="kpi-card"><div className="kpi-head"><span>近30日播放</span><i>全平台</i></div><strong>{stats.views.toLocaleString()}</strong><p className="up"><span>每日数据汇总</span></p><div className="spark blue"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
+            <article className="kpi-card"><div className="kpi-head"><span>近30日线索</span><i>私域获客</i></div><strong>{stats.leads.toLocaleString()}</strong><p className="up"><span>平台归因数据</span></p><div className="spark green"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
+            <article className="kpi-card revenue"><div className="kpi-head"><span>近30日收入</span><i>已确认</i></div><strong>¥ {stats.revenue.toLocaleString()}</strong><p className="up"><span>内容归因收入</span></p><div className="spark coral"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
           </section>
 
           <section className="main-grid">
