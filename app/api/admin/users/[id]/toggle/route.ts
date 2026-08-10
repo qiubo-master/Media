@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { seeOther } from "@/lib/request";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const current = await getCurrentUser();
@@ -13,5 +14,5 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!target) return NextResponse.json({ error: "用户不存在" }, { status: 404 });
   await db.update(users).set({ active: !target.active, updatedAt: new Date() }).where(eq(users.id, id));
   if (target.active) await db.delete(sessions).where(eq(sessions.userId, id));
-  return NextResponse.redirect(new URL("/admin/users", request.url), 303);
+  return seeOther("/admin/users");
 }

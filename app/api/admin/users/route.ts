@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { seeOther } from "@/lib/request";
 
 export async function POST(request: NextRequest) {
   const current = await getCurrentUser();
@@ -15,5 +16,5 @@ export async function POST(request: NextRequest) {
   if (!/^\S+@\S+\.\S+$/.test(email) || name.length < 2 || password.length < 12) return NextResponse.json({ error: "输入不符合要求" }, { status: 400 });
   const passwordHash = await hash(password, { memoryCost: 19456, timeCost: 3, parallelism: 1 });
   await db.insert(users).values({ email, name, passwordHash, role });
-  return NextResponse.redirect(new URL("/admin/users", request.url), 303);
+  return seeOther("/admin/users");
 }

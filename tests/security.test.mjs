@@ -13,4 +13,12 @@ test("deployment keeps secrets outside source", async () => {
   assert.match(auth, /httpOnly:\s*true/);
   assert.match(auth, /sameSite:\s*"lax"/);
   assert.match(auth, /sha256/);
+  assert.match(auth, /COOKIE_SECURE/);
+});
+
+test("form redirects stay on the public browser origin", async () => {
+  const request = await readFile(new URL("../lib/request.ts", import.meta.url), "utf8");
+  const login = await readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8");
+  assert.match(request, /headers:\s*\{\s*Location:/);
+  assert.doesNotMatch(login, /new URL\([^)]*request\.url/);
 });
