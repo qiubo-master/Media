@@ -26,3 +26,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]
+
+FROM node:22-bookworm-slim AS migrate
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY db/migrations ./db/migrations
+COPY scripts ./scripts
+USER node
+CMD ["node", "scripts/migrate.mjs"]

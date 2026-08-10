@@ -31,7 +31,11 @@ if [[ "$ACTION" == "rollback" ]]; then
   set -a
   source "$TARGET/deploy.resources.env"
   set +a
-  compose "$TARGET" up -d --build --remove-orphans
+  if ! compose "$TARGET" up -d --build --remove-orphans; then
+    compose "$TARGET" ps || true
+    compose "$TARGET" logs --tail=100 db migrate app nginx || true
+    exit 1
+  fi
 else
   validate
   RELEASE="$ROOT/releases/$RELEASE_SHA"
@@ -46,7 +50,11 @@ MEDIA_HOST_PORT=$MEDIA_HOST_PORT
 MEDIA_BIND_ADDRESS=$MEDIA_BIND_ADDRESS
 EOF
   TARGET="$RELEASE"
-  compose "$TARGET" up -d --build --remove-orphans
+  if ! compose "$TARGET" up -d --build --remove-orphans; then
+    compose "$TARGET" ps || true
+    compose "$TARGET" logs --tail=100 db migrate app nginx || true
+    exit 1
+  fi
 fi
 
 for _ in $(seq 1 45); do
