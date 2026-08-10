@@ -15,6 +15,11 @@ export async function POST(request: NextRequest) {
   if (!platform || handle.length < 2) return seeOther("/accounts?error=input");
   let [profile] = await db.select({ id: ips.id }).from(ips).where(eq(ips.ownerId, user.id)).limit(1);
   if (!profile) [profile] = await db.insert(ips).values({ ownerId: user.id, name: `${user.name}的IP` }).returning({ id: ips.id });
-  await db.insert(accounts).values({ ipId: profile.id, platform, handle, displayName: handle, profileUrl }).onConflictDoNothing();
-  return seeOther("/accounts?ok=account");
+  try {
+    await db.insert(accounts).values({ ipId: profile.id, platform, handle, displayName: handle, profileUrl }).onConflictDoNothing();
+    return seeOther("/accounts?ok=account");
+  } catch (error) {
+    console.error("Failed to save account", error);
+    return seeOther("/accounts?error=input");
+  }
 }

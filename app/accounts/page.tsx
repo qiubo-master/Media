@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { accounts, accountDailyMetrics, importBatches, ips } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import "./module.css";
+import SubmitButton from "@/app/components/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +30,13 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
         <label>平台<select name="platform" required defaultValue="douyin"><option value="douyin">抖音</option><option value="xiaohongshu">小红书</option><option value="wechat_channels">微信视频号</option><option value="bilibili">哔哩哔哩</option><option value="weibo">微博</option><option value="kuaishou">快手</option><option value="other">其他</option></select></label>
         <label>账号名称或 ID<input name="handle" required placeholder="例如：序章IP咨询" /></label>
         <label>主页链接（可选）<input name="profileUrl" type="url" placeholder="https://..." /></label>
-        <button type="submit">添加账号</button>
+        <SubmitButton>添加账号</SubmitButton>
       </form></article>
 
       <article className="module-card"><h2>上传每日数据</h2><p>导出平台后台数据后另存为 UTF-8 CSV。每个日期重复上传会覆盖当日数据，不会重复累计。</p><form className="stack-form" action="/api/accounts/import" method="post" encType="multipart/form-data">
         <label>选择账号<select name="accountId" required><option value="">请选择</option>{rows.map((account) => <option value={account.id} key={account.id}>{account.displayName || account.handle} · {account.platform}</option>)}</select></label>
         <label>CSV 文件<input name="file" type="file" accept=".csv,text/csv" required /></label>
-        <button type="submit" disabled={!rows.length}>上传并导入</button>
+        {rows.length ? <SubmitButton>上传并导入</SubmitButton> : <button type="button" disabled>请先添加账号</button>}
       </form><div className="csv-help"><b>支持字段</b><code>date,followers,follower_delta,impressions,views,engagements,profile_visits,leads,revenue</code><small>字段也支持中文：日期、粉丝数、新增粉丝、曝光、播放、互动、主页访问、线索、收入。</small></div></article>
     </section>
 

@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { aiInsights, assets, contents, ips, leads, serviceCases, topics } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import SubmitButton from "@/app/components/submit-button";
 import "../../accounts/module.css";
 
 export const dynamic = "force-dynamic";
@@ -13,16 +14,19 @@ const titles: Record<string, [string, string]> = {
   leads: ["获客中心", "统一记录线索来源、意向、评分和下一次跟进。"], service: ["客户服务", "把成交后的交付事项、负责人和结果沉淀下来。"], insights: ["数据洞察", "保存 AI 复盘结论、证据、置信度及下一步行动。"],
 };
 
-export default async function ModulePage({ params, searchParams }: { params: Promise<{ module: string }>; searchParams: Promise<{ ok?: string }> }) {
+export default async function ModulePage({ params, searchParams }: { params: Promise<{ module: string }>; searchParams: Promise<{ ok?: string; error?: string; q?: string; sort?: string }> }) {
   const user = await getCurrentUser(); if (!user) redirect("/login");
   const { module } = await params; if (!titles[module]) notFound(); const query = await searchParams;
   const [profile] = await db.select().from(ips).where(eq(ips.ownerId, user.id)).limit(1);
   const items = profile ? await loadItems(module, profile.id) : [];
+  const keyword = (query.q || "").trim().toLowerCase();
+  const filteredItems = items.filter((item) => !keyword || `${itemTitle(item)} ${itemSubtitle(item)} ${itemStatus(item)}`.toLowerCase().includes(keyword));
+  if (query.sort === "oldest") filteredItems.reverse();
   const leadOptions = profile ? await db.select({ id: leads.id, name: leads.name, contact: leads.contact }).from(leads).where(eq(leads.ipId, profile.id)).orderBy(desc(leads.createdAt)).limit(100) : [];
-  return <main className="module-page"><header className="module-header"><div><Link href="/">← 返回经营总览</Link><p>业务模块</p><h1>{titles[module][0]}</h1><span>{titles[module][1]}</span></div><div className="module-badge">{items.length} 条记录</div></header>{query.ok && <div className="notice success">保存成功。</div>}
-    <section className="module-grid"><article className="module-card"><h2>{module === "positioning" ? "定位档案" : "新增记录"}</h2><p>信息会保存到 PostgreSQL，并进入后续分析和 AI 推断。</p><ModuleForm module={module} profile={profile} leads={leadOptions} /></article>
-      <article className="module-card"><h2>模块说明</h2><p>当前版本已经打通结构化数据闭环。</p><div className="csv-help"><b>下一步自动化</b><small>{automationCopy(module)}</small></div></article></section>
-    <section className="module-card full"><h2>{module === "positioning" ? "当前定位" : "最近记录"}</h2>{!items.length ? <div className="empty">暂无记录，请从上方开始创建。</div> : <div className="import-list">{items.map((item) => <div key={String(item.id)}><span><b>{itemTitle(item)}</b><small>{itemSubtitle(item)}</small></span><span>{itemStatus(item)}</span><i>已入库</i></div>)}</div>}</section></main>;
+  return <main className="module-page"><header className="module-header"><div><Link href="/">← 返回经营总览</Link><p>业务模块</p><h1>{titles[module][0]}</h1><span>{titles[module][1]}</span></div><div className="module-badge">{items.length} 条记录</div></header>{query.ok && <div className="notice success">保存成功，页面已自动刷新。</div>}{query.error && <div className="notice error">保存失败，请检查必填项后重试。</div>}
+    <section className="module-workspace"><article className="module-card module-data"><h2>{module === "positioning" ? "当前定位" : "数据列表"}</h2><p>支持关键词筛选和时间排序。</p><form className="filter-form" method="get"><input name="q" defaultValue={query.q || ""} placeholder="搜索标题、内容或状态"/><select name="sort" defaultValue={query.sort || "newest"}><option value="newest">最新优先</option><option value="oldest">最早优先</option></select><button type="submit">筛选</button></form>
+      {!filteredItems.length ? <div className="empty">没有符合条件的记录。</div> : <div className="module-records">{filteredItems.map((item) => <div key={String(item.id)}><span><b>{itemTitle(item)}</b><small>{itemSubtitle(item)}</small></span><span>{itemStatus(item)}</span><i>已入库</i></div>)}</div>}</article>
+      <aside className="module-card module-editor"><h2>{module === "positioning" ? "编辑定位档案" : "新增记录"}</h2><p>保存后会自动返回本页面并刷新左侧数据。</p><ModuleForm module={module} profile={profile} leads={leadOptions} /><div className="csv-help"><b>下一步自动化</b><small>{automationCopy(module)}</small></div></aside></section></main>;
 }
 
 async function loadItems(module: string, ipId: string) {
@@ -45,7 +49,7 @@ function ModuleForm({ module, profile, leads: leadOptions }: { module: string; p
     {module === "leads" && <><label>客户称呼<input name="name" /></label><label>联系方式<input name="contact" required /></label><label>来源渠道<input name="channel" placeholder="抖音私信 / 小红书 / 表单" /></label><label>意向描述<input name="intent" /></label></>}
     {module === "service" && <><label>关联客户<select name="leadId" required><option value="">请选择</option>{leadOptions.map((lead) => <option value={lead.id} key={lead.id}>{lead.name || lead.contact}</option>)}</select></label><label>服务事项<input name="title" required /></label><label>优先级<select name="priority"><option value="normal">普通</option><option value="high">高</option><option value="urgent">紧急</option></select></label></>}
     {module === "insights" && <><label>洞察标题<input name="title" required /></label><label>分析结论<input name="summary" required /></label><label>建议行动<input name="recommendation" /></label></>}
-    <button type="submit">保存</button>
+    <SubmitButton>保存</SubmitButton>
   </form>;
 }
 
