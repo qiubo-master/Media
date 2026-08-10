@@ -35,3 +35,19 @@ docker compose up -d --build
 首次打开网站时会自动进入管理员初始化页面。第一位用户成为管理员，此后初始化入口自动关闭。
 
 生产环境建议绑定域名并启用 HTTPS，只开放安全组的 `22`、`80`、`443` 端口，PostgreSQL 的 `5432` 不对公网开放。
+
+## ForgeOps CI/CD 资源下发
+
+仓库内置 `.github/workflows/deploy.yml`，供 CSS-Deploy-Center 调用。控制台下发固定的轻量、标准、增强资源档位，流水线对 CPU、内存、端口和绑定地址进行二次白名单校验，再通过 SSH 在 `/opt/media-platform/releases` 创建不可变版本。
+
+首次发布前，在服务器准备生产密钥：
+
+```bash
+sudo install -d -m 750 /opt/media-platform/shared
+sudo cp .env.example /opt/media-platform/shared/.env
+sudo editor /opt/media-platform/shared/.env
+```
+
+必须修改 `POSTGRES_PASSWORD`。模型 API Key 也只放在这个服务器文件里。GitHub 仓库需配置 `DEPLOY_HOST`、`DEPLOY_PORT`、`DEPLOY_USER`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY`。
+
+默认入口为共享公网 IP 的 `8080` 端口，需要在阿里云安全组开放该端口。若选择“统一 Nginx 网关”，服务只监听 `127.0.0.1:8080`，宿主机 Nginx 可转发到该地址，此时公网只需开放 `80/443`。

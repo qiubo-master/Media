@@ -1,4 +1,4 @@
-name: media-creator-os
+name: media-platform
 
 services:
   db:
@@ -16,9 +16,13 @@ services:
       timeout: 5s
       retries: 12
     networks: [internal]
+    mem_limit: ${MEDIA_DATABASE_MEMORY:-1g}
+    cpus: ${MEDIA_DATABASE_CPU:-1.0}
 
   migrate:
-    build: .
+    build:
+      context: .
+      target: migrate
     command: ["node", "scripts/migrate.mjs"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -27,7 +31,9 @@ services:
     networks: [internal]
 
   app:
-    build: .
+    build:
+      context: .
+      target: runner
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -45,16 +51,25 @@ services:
       timeout: 5s
       retries: 12
     networks: [internal]
+    mem_limit: ${MEDIA_APP_MEMORY:-2g}
+    cpus: ${MEDIA_APP_CPU:-2.0}
 
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    ports: ["127.0.0.1:${APP_PORT:-8080}:80"]
+    ports: ["${MEDIA_BIND_ADDRESS:-0.0.0.0}:${MEDIA_HOST_PORT:-8080}:80"]
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       app: { condition: service_healthy }
     networks: [internal]
+    mem_limit: 128m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
 
 volumes:
   postgres_data:

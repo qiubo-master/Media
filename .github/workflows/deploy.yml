@@ -1,0 +1,118 @@
+name: Deploy Media Platform
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Deployment action
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback]
+      resource_profile:
+        description: Auditable resource profile
+        required: true
+        default: standard
+        type: choice
+        options: [small, standard, large]
+      app_cpu:
+        description: Application CPU limit
+        required: true
+        default: "2.0"
+      app_memory:
+        description: Application memory limit
+        required: true
+        default: 2g
+      database_memory:
+        description: PostgreSQL memory limit
+        required: true
+        default: 1g
+      host_port:
+        description: Shared public IP port or gateway upstream port
+        required: true
+        default: "8080"
+      bind_address:
+        description: 0.0.0.0 for direct access; 127.0.0.1 for host Nginx
+        required: true
+        default: 0.0.0.0
+        type: choice
+        options: [0.0.0.0, 127.0.0.1]
+
+concurrency:
+  group: media-platform-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          DATABASE_URL: postgres://build:build@127.0.0.1:5432/build
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate requested resources
+        env:
+          APP_CPU: ${{ inputs.app_cpu }}
+          APP_MEMORY: ${{ inputs.app_memory }}
+          DB_MEMORY: ${{ inputs.database_memory }}
+          HOST_PORT: ${{ inputs.host_port }}
+          BIND_ADDRESS: ${{ inputs.bind_address }}
+        run: |
+          [[ "$APP_CPU" =~ ^(1\.0|2\.0|4\.0)$ ]]
+          [[ "$APP_MEMORY" =~ ^(1g|2g|4g)$ ]]
+          [[ "$DB_MEMORY" =~ ^(512m|1g|2g)$ ]]
+          [[ "$HOST_PORT" =~ ^[0-9]{4,5}$ ]] && (( HOST_PORT >= 1024 && HOST_PORT <= 65535 ))
+          [[ "$BIND_ADDRESS" == "0.0.0.0" || "$BIND_ADDRESS" == "127.0.0.1" ]]
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_HOST_KEY" > ~/.ssh/known_hosts
+      - name: Package and upload release
+        if: inputs.action == 'deploy'
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          tar --exclude=.git --exclude=node_modules --exclude=.next -czf /tmp/media-platform.tgz .
+          scp -i ~/.ssh/deploy_key -P "$PORT" /tmp/media-platform.tgz "$USER@$HOST:/tmp/media-platform-${GITHUB_SHA}.tgz"
+      - name: Activate requested release
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          ACTION: ${{ inputs.action }}
+          APP_CPU: ${{ inputs.app_cpu }}
+          APP_MEMORY: ${{ inputs.app_memory }}
+          DB_MEMORY: ${{ inputs.database_memory }}
+          HOST_PORT: ${{ inputs.host_port }}
+          BIND_ADDRESS: ${{ inputs.bind_address }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$PORT" "$USER@$HOST" \
+            "ACTION=$ACTION RELEASE_SHA=$GITHUB_SHA ARCHIVE=/tmp/media-platform-${GITHUB_SHA}.tgz MEDIA_APP_CPU=$APP_CPU MEDIA_APP_MEMORY=$APP_MEMORY MEDIA_DATABASE_MEMORY=$DB_MEMORY MEDIA_HOST_PORT=$HOST_PORT MEDIA_BIND_ADDRESS=$BIND_ADDRESS bash -s" \
+            < ops/deploy-media.sh
