@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 const nav = ["经营总览", "IP定位", "选题策划", "内容生产", "素材资产", "账号矩阵", "获客中心", "客户服务", "数据洞察"];
@@ -22,6 +22,17 @@ const providers = [
 type Trend = { date: string; views: number; likes: number; saves: number; shares: number; followerDelta: number };
 type AccountTrend = { id: string; name: string; platform: string; followers: number; views: number; likes: number; saves: number; shares: number; followerDelta: number };
 type TopContent = { id: string; title: string; platform: string; views: number; likes: number; saves: number; shares: number; followerDelta: number; revenue: number };
+type DailyAccount = { date: string; accountId: string; accountName: string; platform: string; views: number; leads: number; revenue: number };
+
+function MetricScroller({ rows, field }: { rows: DailyAccount[]; field: "views" | "leads" | "revenue" }) {
+  const scroller = useRef<HTMLDivElement>(null); const drag = useRef({ active: false, x: 0, left: 0 });
+  const days = useMemo(() => { const grouped = new Map<string, DailyAccount[]>(); for (const row of rows) grouped.set(row.date, [...(grouped.get(row.date) || []), row]); return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)); }, [rows]);
+  useEffect(() => { if (scroller.current) scroller.current.scrollLeft = scroller.current.scrollWidth; }, [days.length]);
+  const format = (value: number) => field === "revenue" ? `¥${value.toLocaleString()}` : value.toLocaleString();
+  return <div className="metric-scroller" ref={scroller} onPointerDown={(event) => { drag.current = { active: true, x: event.clientX, left: event.currentTarget.scrollLeft }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={(event) => { if (drag.current.active) event.currentTarget.scrollLeft = drag.current.left - (event.clientX - drag.current.x); }} onPointerUp={() => { drag.current.active = false; }} onPointerCancel={() => { drag.current.active = false; }}>
+    {days.map(([date, accounts]) => <div className="metric-day" key={date}><b>{date.slice(5).replace("-", "/")}</b>{accounts.map((account) => <span key={account.accountId}><small>{account.accountName}</small><strong>{format(account[field])}</strong></span>)}</div>)}
+  </div>;
+}
 
 function TrendChart({ title, subtitle, rows, mode }: { title: string; subtitle: string; rows: Trend[]; mode: "views" | "interaction" | "followers" }) {
   const values = rows.map((row) => mode === "views" ? row.views : mode === "followers" ? row.followerDelta : row.likes + row.saves + row.shares);
@@ -30,7 +41,7 @@ function TrendChart({ title, subtitle, rows, mode }: { title: string; subtitle: 
   return <article className="card trend-card"><div className="card-title"><div><h3>{title}</h3><p>{subtitle}</p></div></div>{rows.length ? <div className="trend-bars">{rows.map((row, index) => { const value = values[index]; const detail = mode === "interaction" ? `${row.date} 点赞${row.likes} 收藏${row.saves} 转发${row.shares}` : `${row.date} ${value}`; return <i className={`trend-bar ${tone}`} style={{ height: `${Math.max(4, Math.abs(value) / max * 100)}%` }} data-value={detail} title={detail} key={row.date}/>; })}</div> : <div className="empty">录入作品数据后生成趋势</div>}</article>;
 }
 
-export default function DashboardClient({ userName = "用户", ipName = "个人IP", isAdmin = false, stats = { followers: 0, views: 0, leads: 0, revenue: 0 }, trends = [], accountTrends = [], topContents = [] }: { userName?: string; ipName?: string; isAdmin?: boolean; stats?: { followers: number; views: number; leads: number; revenue: number }; trends?: Trend[]; accountTrends?: AccountTrend[]; topContents?: TopContent[] }) {
+export default function DashboardClient({ userName = "用户", ipName = "个人IP", isAdmin = false, stats = { followers: 0, views: 0, leads: 0, revenue: 0 }, trends = [], accountTrends = [], topContents = [], dailyAccounts = [] }: { userName?: string; ipName?: string; isAdmin?: boolean; stats?: { followers: number; views: number; leads: number; revenue: number }; trends?: Trend[]; accountTrends?: AccountTrend[]; topContents?: TopContent[]; dailyAccounts?: DailyAccount[] }) {
   const [active, setActive] = useState("经营总览");
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-5.2");
@@ -66,10 +77,10 @@ export default function DashboardClient({ userName = "用户", ipName = "个人I
           <div className="welcome"><div><p>你的内容经营工作台</p><h1>你好，{userName} <span>👋</span></h1><h2>{ipName} 的真实经营数据与增长趋势。</h2></div><div className="range"><button className="active">近30天</button></div></div>
 
           <section className="hero-grid">
-            <article className="kpi-card"><div className="kpi-head"><span>总粉丝</span><i>实时账号数据</i></div><strong>{stats.followers.toLocaleString()}</strong><p className="up"><span>来自账号矩阵</span></p><div className="spark purple"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article className="kpi-card"><div className="kpi-head"><span>近30日播放</span><i>全平台</i></div><strong>{stats.views.toLocaleString()}</strong><p className="up"><span>每日数据汇总</span></p><div className="spark blue"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article className="kpi-card"><div className="kpi-head"><span>近30日线索</span><i>私域获客</i></div><strong>{stats.leads.toLocaleString()}</strong><p className="up"><span>平台归因数据</span></p><div className="spark green"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
-            <article className="kpi-card revenue"><div className="kpi-head"><span>近30日收入</span><i>已确认</i></div><strong>¥ {stats.revenue.toLocaleString()}</strong><p className="up"><span>内容归因收入</span></p><div className="spark coral"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
+            <article className="kpi-card kpi-detail"><div className="kpi-head"><span>总粉丝</span><i>各平台当前值</i></div><strong>{stats.followers.toLocaleString()}</strong><div className="follower-accounts">{accountTrends.map((account) => <span key={account.id}><small>{account.name}</small><b>{account.followers.toLocaleString()}</b></span>)}</div></article>
+            <article className="kpi-card kpi-detail"><div className="kpi-head"><span>近30日播放</span><i>拖动查看每日</i></div><strong>{stats.views.toLocaleString()}</strong><MetricScroller rows={dailyAccounts} field="views"/></article>
+            <article className="kpi-card kpi-detail"><div className="kpi-head"><span>近30日线索</span><i>拖动查看每日</i></div><strong>{stats.leads.toLocaleString()}</strong><MetricScroller rows={dailyAccounts} field="leads"/></article>
+            <article className="kpi-card kpi-detail revenue"><div className="kpi-head"><span>近30日收入</span><i>拖动查看每日</i></div><strong>¥ {stats.revenue.toLocaleString()}</strong><MetricScroller rows={dailyAccounts} field="revenue"/></article>
           </section>
 
           <section className="trend-grid"><TrendChart title="播放趋势" subtitle="全部账号近30日作品播放" rows={trends} mode="views"/><TrendChart title="互动趋势" subtitle="点赞、收藏与转发合计" rows={trends} mode="interaction"/><TrendChart title="粉丝增长趋势" subtitle="按作品归因的新增粉丝" rows={trends} mode="followers"/></section>
