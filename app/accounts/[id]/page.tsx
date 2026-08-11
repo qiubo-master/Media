@@ -1,0 +1,36 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { accounts, contents, ips, metrics } from "@/db/schema";
+import { getCurrentUser } from "@/lib/auth";
+import SubmitButton from "@/app/components/submit-button";
+import "../module.css";
+
+export const dynamic = "force-dynamic";
+
+export default async function AccountDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string; q?: string; sort?: string }> }) {
+  const user = await getCurrentUser(); if (!user) redirect("/login");
+  const { id } = await params; const query = await searchParams;
+  const [account] = await db.select().from(accounts).innerJoin(ips, eq(accounts.ipId, ips.id)).where(and(eq(accounts.id, id), eq(ips.ownerId, user.id))).limit(1);
+  if (!account) notFound();
+  const works = await db.select({ id: contents.id, title: contents.title, format: contents.format, publishedAt: contents.publishedAt, publishedUrl: contents.publishedUrl,
+    views: sql<number>`coalesce(sum(${metrics.views}),0)`, likes: sql<number>`coalesce(sum(${metrics.likes}),0)`, saves: sql<number>`coalesce(sum(${metrics.saves}),0)`, shares: sql<number>`coalesce(sum(${metrics.shares}),0)`,
+    followerDelta: sql<number>`coalesce(sum(${metrics.followerDelta}),0)`, leads: sql<number>`coalesce(sum(${metrics.leads}),0)`, revenue: sql<number>`coalesce(sum(${metrics.revenue}),0)`,
+  }).from(contents).leftJoin(metrics, eq(metrics.contentId, contents.id)).where(eq(contents.accountId, id)).groupBy(contents.id).orderBy(desc(contents.publishedAt));
+  const dailyRows = await db.execute(sql`select metric_date as date,coalesce(sum(views),0)::int as views,coalesce(sum(likes+saves+shares),0)::int as interactions,coalesce(sum(follower_delta),0)::int as followers from metrics m join contents c on c.id=m.content_id where c.account_id=${id} and m.metric_date >= current_date - interval '29 days' group by metric_date order by metric_date`);
+  const daily = Array.from(dailyRows).map((row) => ({ date: String(row.date), views: Number(row.views), interactions: Number(row.interactions), followers: Number(row.followers) }));
+  const keyword = (query.q || "").toLowerCase(); const filtered = works.filter((work) => !keyword || work.title.toLowerCase().includes(keyword)); if (query.sort === "oldest") filtered.reverse();
+  return <main className="module-page"><header className="module-header"><div><Link href="/accounts">← 返回账号矩阵</Link><p>{account.accounts.platform}</p><h1>{account.accounts.displayName || account.accounts.handle}</h1><span>录入这个账号已经发布的作品，并持续更新每条作品的真实表现。</span></div><div className="module-badge">{works.length} 条作品</div></header>
+    {query.ok && <div className="notice success">保存成功，数据看板已同步更新。</div>}{query.error && <div className="notice error">保存失败，请检查日期和必填数据。</div>}
+    <section className="trend-grid"><AccountTrend title="播放趋势" rows={daily} field="views"/><AccountTrend title="点赞·收藏·转发" rows={daily} field="interactions"/><AccountTrend title="粉丝增长" rows={daily} field="followers"/></section>
+    <section className="module-workspace"><article className="module-card module-data"><h2>作品数据</h2><form className="filter-form" method="get"><input name="q" defaultValue={query.q || ""} placeholder="搜索作品标题"/><select name="sort" defaultValue={query.sort || "newest"}><option value="newest">最新发布</option><option value="oldest">最早发布</option></select><button>筛选</button></form>
+      {!filtered.length ? <div className="empty">还没有作品，请在右侧先添加作品。</div> : <div className="video-list">{filtered.map((work) => <div className="video-card" key={work.id}><div><b>{work.title}</b><small>{work.publishedAt?.toLocaleDateString("zh-CN") || "未填写日期"} · {work.format || "视频"}</small></div><div className="video-metrics"><span>播放<strong>{Number(work.views).toLocaleString()}</strong></span><span>点赞<strong>{Number(work.likes).toLocaleString()}</strong></span><span>收藏<strong>{Number(work.saves).toLocaleString()}</strong></span><span>转发<strong>{Number(work.shares).toLocaleString()}</strong></span><span>增粉<strong>{Number(work.followerDelta).toLocaleString()}</strong></span><span>收入<strong>¥{Number(work.revenue).toLocaleString()}</strong></span></div></div>)}</div>}
+    </article><aside className="module-card module-editor"><h2>添加已发布作品</h2><form className="stack-form" action={`/api/accounts/${id}/contents`} method="post"><input type="hidden" name="action" value="content"/><label>作品标题<input name="title" required/></label><label>发布日<input name="publishedDate" type="date" required/></label><label>作品类型<select name="format"><option>短视频</option><option>图文</option><option>直播</option><option>长视频</option></select></label><label>作品链接<input name="publishedUrl" type="url"/></label><SubmitButton>添加作品</SubmitButton></form>
+      <hr className="form-divider"/><h2>录入作品每日增量</h2><p>填写该作品当天新增的数据；同一作品同一天再次保存会覆盖修正。</p><form className="stack-form" action={`/api/accounts/${id}/contents`} method="post"><input type="hidden" name="action" value="metric"/><label>选择作品<select name="contentId" required><option value="">请选择</option>{works.map((work) => <option value={work.id} key={work.id}>{work.title}</option>)}</select></label><label>数据日期<input name="metricDate" type="date" required/></label><div className="compact-fields"><label>新增播放<input name="views" type="number" min="0" defaultValue="0"/></label><label>新增点赞<input name="likes" type="number" min="0" defaultValue="0"/></label><label>新增收藏<input name="saves" type="number" min="0" defaultValue="0"/></label><label>新增转发<input name="shares" type="number" min="0" defaultValue="0"/></label><label>粉丝增加<input name="followerDelta" type="number" defaultValue="0"/></label><label>新增线索<input name="leads" type="number" min="0" defaultValue="0"/></label><label>新增收入<input name="revenue" type="number" min="0" step="0.01" defaultValue="0"/></label></div><SubmitButton>保存作品数据</SubmitButton></form></aside></section></main>;
+}
+
+function AccountTrend({ title, rows, field }: { title: string; rows: { date: string; views: number; interactions: number; followers: number }[]; field: "views" | "interactions" | "followers" }) {
+  const max = Math.max(1, ...rows.map((row) => Math.abs(row[field]))); const tone = field === "interactions" ? "green" : field === "followers" ? "coral" : "";
+  return <article className="module-card trend-card"><h2>{title}</h2>{rows.length ? <div className="trend-bars">{rows.map((row) => <i key={row.date} className={`trend-bar ${tone}`} style={{ height: `${Math.max(4, Math.abs(row[field]) / max * 100)}%` }} data-value={`${row.date} ${row[field]}`} title={`${row.date} ${row[field]}`}/>)}</div> : <div className="empty">暂无近30日数据</div>}</article>;
+}

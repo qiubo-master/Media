@@ -49,10 +49,11 @@ export const contents = pgTable("contents", {
 });
 export const metrics = pgTable("metrics", {
   id: uuid("id").primaryKey().defaultRandom(), contentId: uuid("content_id").notNull().references(() => contents.id, { onDelete: "cascade" }),
+  metricDate: date("metric_date").notNull(), followerDelta: integer("follower_delta").notNull().default(0),
   views: integer("views").notNull().default(0), impressions: integer("impressions").notNull().default(0), likes: integer("likes").notNull().default(0), comments: integer("comments").notNull().default(0),
   shares: integer("shares").notNull().default(0), saves: integer("saves").notNull().default(0), engagements: integer("engagements").notNull().default(0), leads: integer("leads").notNull().default(0),
   revenue: numeric("revenue", { precision: 14, scale: 2 }).notNull().default("0"), capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [uniqueIndex("metrics_content_date_uq").on(table.contentId, table.metricDate), index("metrics_date_idx").on(table.metricDate)]);
 
 export const accountDailyMetrics = pgTable("account_daily_metrics", {
   id: uuid("id").primaryKey().defaultRandom(), accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }), metricDate: date("metric_date").notNull(),

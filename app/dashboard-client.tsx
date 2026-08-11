@@ -12,12 +12,6 @@ const tasks = [
   { title: "跟进｜7位领取定位清单的新线索", meta: "3位高意向 · 建议今天联系", tone: "green" },
 ];
 
-const contents = [
-  { title: "为什么你发了100条内容，还是没有客户？", platform: "抖音", type: "痛点口播", score: 92, leads: 31, trend: "+46%" },
-  { title: "从0到1做个人IP的定位检查清单", platform: "小红书", type: "资料型", score: 88, leads: 24, trend: "+31%" },
-  { title: "客户案例：重新定位后，咨询量发生了什么", platform: "视频号", type: "案例型", score: 84, leads: 18, trend: "+22%" },
-];
-
 const providers = [
   { id: "openai", name: "OpenAI", models: ["gpt-5.2", "gpt-5-mini"] },
   { id: "anthropic", name: "Anthropic", models: ["claude-sonnet-4-5", "claude-haiku-4-5"] },
@@ -25,9 +19,19 @@ const providers = [
   { id: "deepseek", name: "DeepSeek", models: ["deepseek-chat", "deepseek-reasoner"] },
 ];
 
-export default function DashboardClient({ userName = "林野", isAdmin = false, stats = { followers: 0, views: 0, leads: 0, revenue: 0 } }: { userName?: string; isAdmin?: boolean; stats?: { followers: number; views: number; leads: number; revenue: number } }) {
+type Trend = { date: string; views: number; likes: number; saves: number; shares: number; followerDelta: number };
+type AccountTrend = { id: string; name: string; platform: string; followers: number; views: number; likes: number; saves: number; shares: number; followerDelta: number };
+type TopContent = { id: string; title: string; platform: string; views: number; likes: number; saves: number; shares: number; followerDelta: number; revenue: number };
+
+function TrendChart({ title, subtitle, rows, mode }: { title: string; subtitle: string; rows: Trend[]; mode: "views" | "interaction" | "followers" }) {
+  const values = rows.map((row) => mode === "views" ? row.views : mode === "followers" ? row.followerDelta : row.likes + row.saves + row.shares);
+  const max = Math.max(1, ...values.map((value) => Math.abs(value)));
+  const tone = mode === "views" ? "" : mode === "interaction" ? "green" : "coral";
+  return <article className="card trend-card"><div className="card-title"><div><h3>{title}</h3><p>{subtitle}</p></div></div>{rows.length ? <div className="trend-bars">{rows.map((row, index) => { const value = values[index]; const detail = mode === "interaction" ? `${row.date} 点赞${row.likes} 收藏${row.saves} 转发${row.shares}` : `${row.date} ${value}`; return <i className={`trend-bar ${tone}`} style={{ height: `${Math.max(4, Math.abs(value) / max * 100)}%` }} data-value={detail} title={detail} key={row.date}/>; })}</div> : <div className="empty">录入作品数据后生成趋势</div>}</article>;
+}
+
+export default function DashboardClient({ userName = "用户", ipName = "个人IP", isAdmin = false, stats = { followers: 0, views: 0, leads: 0, revenue: 0 }, trends = [], accountTrends = [], topContents = [] }: { userName?: string; ipName?: string; isAdmin?: boolean; stats?: { followers: number; views: number; leads: number; revenue: number }; trends?: Trend[]; accountTrends?: AccountTrend[]; topContents?: TopContent[] }) {
   const [active, setActive] = useState("经营总览");
-  const [range, setRange] = useState("近7天");
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-5.2");
   const [panel, setPanel] = useState(false);
@@ -42,8 +46,8 @@ export default function DashboardClient({ userName = "林野", isAdmin = false, 
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">序</span><div><strong>序章</strong><small>Creator OS</small></div></div>
-        <button className="workspace"><span className="avatar">林</span><span><b>林野 · 主理人IP</b><small>个人工作空间</small></span><i>⌄</i></button>
+        <div className="brand"><span className="brand-mark">AI</span><div><strong>自媒体中台</strong><small>Creator OS</small></div></div>
+        <button className="workspace"><span className="avatar">{userName.slice(0, 1)}</span><span><b>{ipName}</b><small>{userName} · 个人空间</small></span><i>⌄</i></button>
         <nav>
           <p className="nav-label">工作空间</p>
           {nav.slice(0, 1).map((item) => <button key={item} onClick={() => setActive(item)} className={active === item ? "active" : ""}><span>⌂</span>{item}</button>)}
@@ -59,7 +63,7 @@ export default function DashboardClient({ userName = "林野", isAdmin = false, 
         <header className="topbar"><div><span className="status-dot" />所有账号运行正常</div><div className="top-actions"><button aria-label="搜索">⌕</button><button aria-label="通知">♢<i /></button><button onClick={() => setPanel(true)} className="model-pill"><span>✦</span>{providers.find(p => p.id === provider)?.name} · {model}<b>⌄</b></button><span className="user-avatar">{userName.slice(0, 1)}</span></div></header>
 
         <div className="page">
-          <div className="welcome"><div><p>你的内容经营工作台</p><h1>你好，{userName} <span>👋</span></h1><h2>这是你的内容生意全景，今天有 <b>3 件事</b>值得优先处理。</h2></div><div className="range">{["近7天", "近30天", "本季度"].map(r => <button onClick={() => setRange(r)} className={range === r ? "active" : ""} key={r}>{r}</button>)}</div></div>
+          <div className="welcome"><div><p>你的内容经营工作台</p><h1>你好，{userName} <span>👋</span></h1><h2>{ipName} 的真实经营数据与增长趋势。</h2></div><div className="range"><button className="active">近30天</button></div></div>
 
           <section className="hero-grid">
             <article className="kpi-card"><div className="kpi-head"><span>总粉丝</span><i>实时账号数据</i></div><strong>{stats.followers.toLocaleString()}</strong><p className="up"><span>来自账号矩阵</span></p><div className="spark purple"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
@@ -68,18 +72,15 @@ export default function DashboardClient({ userName = "林野", isAdmin = false, 
             <article className="kpi-card revenue"><div className="kpi-head"><span>近30日收入</span><i>已确认</i></div><strong>¥ {stats.revenue.toLocaleString()}</strong><p className="up"><span>内容归因收入</span></p><div className="spark coral"><i/><i/><i/><i/><i/><i/><i/><i/><i/><i/></div></article>
           </section>
 
-          <section className="main-grid">
-            <article className="card performance"><div className="card-title"><div><h3>增长趋势</h3><p>曝光、互动与有效线索的变化</p></div><div className="legend"><i className="l-purple"/>曝光 <i className="l-green"/>线索</div></div><div className="chart"><div className="axis"><span>300万</span><span>200万</span><span>100万</span><span>0</span></div><div className="plot"><div className="gridline a"/><div className="gridline b"/><div className="gridline c"/><div className="area-chart"><span/><span/><span/><span/><span/><span/><span/></div><div className="line-chart"><i/><i/><i/><i/><i/><i/><i/></div><div className="dates"><span>8/04</span><span>8/05</span><span>8/06</span><span>8/07</span><span>8/08</span><span>8/09</span><span>8/10</span></div></div></div></article>
-
-            <article className="card ai-card"><div className="ai-top"><span>✦</span><div><h3>AI 经营参谋</h3><p>基于近30天数据生成</p></div><button>···</button></div><div className="insight"><label>本周关键发现</label><h4>案例型内容正在成为你的高价值获客入口</h4><p>案例内容的有效线索率比平均值高 <b>38%</b>，但当前发布占比仅 18%。</p><div className="confidence"><span>置信度：较高</span><i><u/></i><em>样本 24 条</em></div></div><div className="suggestion"><b>建议行动</b><p>下周将案例型内容占比提升至 <strong>30%</strong>，优先复用「问题—过程—结果」结构。</p></div><button className="primary" onClick={() => flash("已生成下周的 6 个案例型选题")}>生成下周选题 <span>→</span></button></article>
-          </section>
+          <section className="trend-grid"><TrendChart title="播放趋势" subtitle="全部账号近30日作品播放" rows={trends} mode="views"/><TrendChart title="互动趋势" subtitle="点赞、收藏与转发合计" rows={trends} mode="interaction"/><TrendChart title="粉丝增长趋势" subtitle="按作品归因的新增粉丝" rows={trends} mode="followers"/></section>
 
           <section className="lower-grid">
             <article className="card tasks"><div className="card-title"><div><h3>今日优先事项</h3><p>按经营价值智能排序</p></div><button>查看全部 →</button></div>{tasks.map((task, i) => <div className="task" key={task.title}><button onClick={() => flash("任务已标记完成")}>✓</button><span className={`task-icon ${task.tone}`}>{["↗", "▶", "♙"][i]}</span><div><b>{task.title}</b><small>{task.meta}</small></div><i>›</i></div>)}</article>
-            <article className="card platform"><div className="card-title"><div><h3>账号矩阵</h3><p>近7天核心表现</p></div><button>管理账号 →</button></div><div className="platform-row"><span className="red">音</span><b>抖音<small>42.8万曝光</small></b><em>+21.4%</em><i>62 条线索</i></div><div className="platform-row"><span className="pink">书</span><b>小红书<small>18.6万曝光</small></b><em>+32.8%</em><i>78 条线索</i></div><div className="platform-row"><span className="green">视</span><b>视频号<small>12.4万曝光</small></b><em>+9.6%</em><i>46 条线索</i></div></article>
+            <article className="card platform"><div className="card-title"><div><h3>账号矩阵</h3><p>近30日真实作品表现</p></div><Link href="/accounts">管理账号 →</Link></div>{accountTrends.length ? accountTrends.slice(0, 5).map((account) => <div className="platform-row" key={account.id}><span className="red">{account.platform.slice(0,1)}</span><b>{account.name}<small>{account.views.toLocaleString()} 播放</small></b><em>+{account.followerDelta.toLocaleString()} 粉</em><Link href={`/accounts/${account.id}`}>详情 →</Link></div>) : <div className="empty">请先在账号矩阵录入作品数据。</div>}</article>
           </section>
 
-          <section className="card top-content"><div className="card-title"><div><h3>高价值内容</h3><p>不只看流量，更关注真实获客</p></div><button>内容分析 →</button></div><div className="table"><div className="tr th"><span>内容</span><span>平台 / 类型</span><span>价值评分</span><span>有效线索</span><span>趋势</span></div>{contents.map((c, i) => <div className="tr" key={c.title}><span className="content-name"><i>{i + 1}</i><b>{c.title}</b></span><span><b>{c.platform}</b><small>{c.type}</small></span><span><strong>{c.score}</strong> / 100</span><span><b>{c.leads}</b></span><span><em>{c.trend}</em></span></div>)}</div></section>
+          <section className="card top-content"><div className="card-title"><div><h3>高表现作品</h3><p>按真实播放量排序</p></div><Link href="/accounts">录入作品 →</Link></div><div className="table"><div className="tr th"><span>作品</span><span>平台</span><span>播放</span><span>互动</span><span>收入</span></div>{topContents.length ? topContents.map((item, i) => <div className="tr" key={item.id}><span className="content-name"><i>{i + 1}</i><b>{item.title}</b></span><span><b>{item.platform}</b><small>增粉 {item.followerDelta}</small></span><span><strong>{item.views.toLocaleString()}</strong></span><span><b>{(item.likes + item.saves + item.shares).toLocaleString()}</b></span><span><em>¥{item.revenue.toLocaleString()}</em></span></div>) : <div className="empty">暂无作品数据。</div>}</div></section>
+          <section className="card top-content"><div className="card-title"><div><h3>各账号增长看板</h3><p>点击账号进入作品和趋势明细</p></div></div><div className="account-growth-grid">{accountTrends.map((account) => <Link className="account-growth-card" href={`/accounts/${account.id}`} key={account.id}><b>{account.name}</b><small>{account.platform} · 总粉丝 {account.followers.toLocaleString()}</small><strong>{account.views.toLocaleString()} 播放</strong><div className="mini-stats"><span>互动 {(account.likes + account.saves + account.shares).toLocaleString()}</span><span>增粉 +{account.followerDelta.toLocaleString()}</span></div></Link>)}</div></section>
         </div>
       </section>
 
