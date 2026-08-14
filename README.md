@@ -51,3 +51,7 @@ sudo editor /opt/media-platform/shared/.env
 必须修改 `POSTGRES_PASSWORD`。模型 API Key 也只放在这个服务器文件里。GitHub 仓库需配置 `DEPLOY_HOST`、`DEPLOY_PORT`、`DEPLOY_USER`、`DEPLOY_SSH_KEY`、`DEPLOY_HOST_KEY`。
 
 默认入口为共享公网 IP 的 `8080` 端口，需要在阿里云安全组开放该端口。若选择“统一 Nginx 网关”，服务只监听 `127.0.0.1:8080`，宿主机 Nginx 可转发到该地址，此时公网只需开放 `80/443`。
+
+## SSH 主机密钥变更
+
+如果部署出现 `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!`，不要关闭 SSH 严格校验。先通过阿里云控制台核对实例及 `/etc/ssh/ssh_host_ed25519_key.pub` 指纹，再同步更新 `DEPLOY_HOST` 和 `DEPLOY_HOST_KEY`。完整处置步骤见 [操作手册](docs/操作手册.md)。
