@@ -6,6 +6,7 @@ import { accounts, accountDailyMetrics, importBatches, ips } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import "./module.css";
 import SubmitButton from "@/app/components/submit-button";
+import { platformLabel } from "@/lib/platforms";
 
 export const dynamic = "force-dynamic";
 
@@ -27,21 +28,21 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
 
     <section className="module-grid">
       <article className="module-card"><h2>添加平台账号</h2><p>这里只保存账号标识，不需要提交平台密码。</p><form className="stack-form" action="/api/accounts" method="post">
-        <label>平台<select name="platform" required defaultValue="douyin"><option value="douyin">抖音</option><option value="xiaohongshu">小红书</option><option value="wechat_channels">微信视频号</option><option value="bilibili">哔哩哔哩</option><option value="weibo">微博</option><option value="kuaishou">快手</option><option value="other">其他</option></select></label>
+        <label>平台<select name="platform" required defaultValue="douyin"><option value="douyin">抖音</option><option value="xiaohongshu">小红书</option><option value="wechat_channels">微信视频号</option><option value="wechat_official">微信公众号</option><option value="bilibili">哔哩哔哩</option><option value="weibo">微博</option><option value="kuaishou">快手</option><option value="other">其他</option></select></label>
         <label>账号名称或 ID<input name="handle" required placeholder="例如：序章IP咨询" /></label>
         <label>主页链接（可选）<input name="profileUrl" type="url" placeholder="https://..." /></label>
         <SubmitButton>添加账号</SubmitButton>
       </form></article>
 
       <article className="module-card"><h2>上传每日数据</h2><p>导出平台后台数据后另存为 UTF-8 CSV。每个日期重复上传会覆盖当日数据，不会重复累计。</p><form className="stack-form" action="/api/accounts/import" method="post" encType="multipart/form-data">
-        <label>选择账号<select name="accountId" required><option value="">请选择</option>{rows.map((account) => <option value={account.id} key={account.id}>{account.displayName || account.handle} · {account.platform}</option>)}</select></label>
+        <label>选择账号<select name="accountId" required><option value="">请选择</option>{rows.map((account) => <option value={account.id} key={account.id}>{account.displayName || account.handle} · {platformLabel(account.platform)}</option>)}</select></label>
         <label>CSV 文件<input name="file" type="file" accept=".csv,text/csv" required /></label>
         {rows.length ? <SubmitButton>上传并导入</SubmitButton> : <button type="button" disabled>请先添加账号</button>}
       </form><div className="csv-help"><b>支持字段</b><code>date,followers,follower_delta,impressions,views,engagements,profile_visits,leads,revenue</code><small>字段也支持中文：日期、粉丝数、新增粉丝、曝光、播放、互动、主页访问、线索、收入。</small></div></article>
     </section>
 
     <section className="module-card full"><div className="section-title"><div><h2>账号列表</h2><p>最近一条上传记录会显示在这里。</p></div></div>
-      {!rows.length ? <div className="empty">还没有账号，请先添加第一个平台账号。</div> : <div className="account-table"><div className="account-row head"><span>账号</span><span>同步方式</span><span>粉丝</span><span>播放</span><span>互动</span><span>线索</span><span>操作</span></div>{rows.map((account) => { const metric = latestByAccount.get(account.id); return <Link className="account-row account-link" href={`/accounts/${account.id}`} key={account.id}><span><b>{account.displayName || account.handle}</b><small>{account.platform} · 点击进入作品数据</small></span><span><i className={account.syncMode === "api" ? "api" : "manual"}>{account.syncMode === "api" ? "API 自动" : "手工上传"}</i></span><span>{metric?.followers?.toLocaleString() ?? account.followers.toLocaleString()}</span><span>{metric?.views?.toLocaleString() ?? "—"}</span><span>{metric?.engagements?.toLocaleString() ?? "—"}</span><span>{metric?.leads?.toLocaleString() ?? "—"}</span><span>录入作品 →</span></Link>})}</div>}
+      {!rows.length ? <div className="empty">还没有账号，请先添加第一个平台账号。</div> : <div className="account-table"><div className="account-row head"><span>账号</span><span>同步方式</span><span>粉丝</span><span>播放</span><span>互动</span><span>线索</span><span>操作</span></div>{rows.map((account) => { const metric = latestByAccount.get(account.id); return <Link className="account-row account-link" href={`/accounts/${account.id}`} key={account.id}><span><b>{account.displayName || account.handle}</b><small>{platformLabel(account.platform)} · 点击进入作品数据</small></span><span><i className={account.syncMode === "api" ? "api" : "manual"}>{account.syncMode === "api" ? "API 自动" : "手工上传"}</i></span><span>{metric?.followers?.toLocaleString() ?? account.followers.toLocaleString()}</span><span>{metric?.views?.toLocaleString() ?? "—"}</span><span>{metric?.engagements?.toLocaleString() ?? "—"}</span><span>{metric?.leads?.toLocaleString() ?? "—"}</span><span>录入作品 →</span></Link>})}</div>}
     </section>
 
     <section className="module-card full"><h2>最近导入记录</h2>{!imports.length ? <div className="empty">暂无导入记录。</div> : <div className="import-list">{imports.map((batch) => <div key={batch.id}><span><b>{batch.fileName}</b><small>{batch.createdAt.toLocaleString("zh-CN")}</small></span><span>{batch.successCount}/{batch.rowCount} 行成功</span><i className={batch.status}>{batch.status === "completed" ? "已完成" : batch.status}</i></div>)}</div>}</section>

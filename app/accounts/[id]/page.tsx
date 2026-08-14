@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { accounts, contents, ips, metrics } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import SubmitButton from "@/app/components/submit-button";
+import { platformLabel } from "@/lib/platforms";
 import "../module.css";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +22,9 @@ export default async function AccountDetailPage({ params, searchParams }: { para
   const dailyRows = await db.execute(sql`select metric_date as date,coalesce(sum(views),0)::int as views,coalesce(sum(likes+saves+shares),0)::int as interactions,coalesce(sum(follower_delta),0)::int as followers from metrics m join contents c on c.id=m.content_id where c.account_id=${id} and m.metric_date >= current_date - interval '29 days' group by metric_date order by metric_date`);
   const daily = Array.from(dailyRows).map((row) => ({ date: String(row.date), views: Number(row.views), interactions: Number(row.interactions), followers: Number(row.followers) }));
   const keyword = (query.q || "").toLowerCase(); const filtered = works.filter((work) => !keyword || work.title.toLowerCase().includes(keyword)); if (query.sort === "oldest") filtered.reverse();
-  return <main className="module-page"><header className="module-header"><div><Link href="/accounts">← 返回账号矩阵</Link><p>{account.accounts.platform}</p><h1>{account.accounts.displayName || account.accounts.handle}</h1><span>录入这个账号已经发布的作品，并持续更新每条作品的真实表现。</span></div><div className="module-badge">{works.length} 条作品</div></header>
+  return <main className="module-page"><header className="module-header"><div><Link href="/accounts">← 返回账号矩阵</Link><p>{platformLabel(account.accounts.platform)}</p><h1>{account.accounts.displayName || account.accounts.handle}</h1><span>录入这个账号已经发布的作品，并持续更新每条作品的真实表现。</span></div><div className="module-badge">{works.length} 条作品</div></header>
     {query.ok && <div className="notice success">保存成功，数据看板已同步更新。</div>}{query.error && <div className="notice error">保存失败，请检查日期和必填数据。</div>}
+    <section className="module-card bulk-import"><div><h2>批量导入作品数据</h2><p>下载统一模板，按平台后台数据填写后，一次上传多条作品和每日指标。</p><Link href="/templates/content-metrics-template.csv">下载 CSV 模板</Link></div><form action={`/api/accounts/${id}/contents/import`} method="post" encType="multipart/form-data"><input name="file" type="file" accept=".csv,text/csv" required/><SubmitButton>一键导入</SubmitButton></form></section>
     <section className="trend-grid"><AccountTrend title="播放趋势" rows={daily} field="views"/><AccountTrend title="点赞·收藏·转发" rows={daily} field="interactions"/><AccountTrend title="粉丝增长" rows={daily} field="followers"/></section>
     <section className="module-workspace"><article className="module-card module-data"><h2>作品数据</h2><form className="filter-form" method="get"><input name="q" defaultValue={query.q || ""} placeholder="搜索作品标题"/><select name="sort" defaultValue={query.sort || "newest"}><option value="newest">最新发布</option><option value="oldest">最早发布</option></select><button>筛选</button></form>
       {!filtered.length ? <div className="empty">还没有作品，请在右侧先添加作品。</div> : <div className="video-list">{filtered.map((work) => <div className="video-card" key={work.id}><div><b>{work.title}</b><small>{work.publishedAt?.toLocaleDateString("zh-CN") || "未填写日期"} · {work.format || "视频"}</small></div><div className="video-metrics"><span>播放<strong>{Number(work.views).toLocaleString()}</strong></span><span>点赞<strong>{Number(work.likes).toLocaleString()}</strong></span><span>收藏<strong>{Number(work.saves).toLocaleString()}</strong></span><span>转发<strong>{Number(work.shares).toLocaleString()}</strong></span><span>增粉<strong>{Number(work.followerDelta).toLocaleString()}</strong></span><span>收入<strong>¥{Number(work.revenue).toLocaleString()}</strong></span></div></div>)}</div>}

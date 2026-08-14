@@ -3,6 +3,7 @@ import "./globals.css";
 import "./ui-fixes.css";
 import "./analytics.css";
 import "./kpi-detail.css";
+import "./account-import.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
