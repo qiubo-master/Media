@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { platformLabel } from "@/lib/platforms";
 
 const nav = ["经营总览", "IP定位", "选题策划", "内容生产", "素材资产", "账号矩阵", "获客中心", "客户服务", "数据洞察"];
 const navPaths: Record<string, string> = { "IP定位": "/modules/positioning", "选题策划": "/modules/topics", "内容生产": "/modules/content", "素材资产": "/modules/assets", "账号矩阵": "/accounts", "获客中心": "/modules/leads", "客户服务": "/modules/service", "数据洞察": "/modules/insights" };
@@ -78,7 +79,7 @@ export default function DashboardClient({ userName = "用户", ipName = "个人I
           <div className="welcome"><div><p>你的内容经营工作台</p><h1>你好，{userName} <span>👋</span></h1><h2>{ipName} 的真实经营数据与增长趋势。</h2></div><div className="range"><button className="active">近30天</button></div></div>
 
           <section className="hero-grid">
-            <article className="kpi-card kpi-detail tone-purple"><div className="kpi-head"><span><b className="kpi-icon">人</b>总粉丝</span><i>各平台当前值</i></div><strong>{stats.followers.toLocaleString()}</strong><div className="follower-accounts">{accountTrends.map((account, index) => <span key={account.id}><i className={`account-dot tone-${index % 5}`}/><small>{account.name}<em>{account.platform}</em></small><b>{account.followers.toLocaleString()}</b></span>)}</div></article>
+            <article className="kpi-card kpi-detail tone-purple"><div className="kpi-head"><span><b className="kpi-icon">人</b>总粉丝</span><i>各平台当前值</i></div><strong>{stats.followers.toLocaleString()}</strong><div className="follower-accounts">{accountTrends.map((account, index) => <span key={account.id}><i className={`account-dot tone-${index % 5}`}/><small>{account.name}<em>{platformLabel(account.platform)}</em></small><b>{account.followers.toLocaleString()}</b></span>)}</div></article>
             <article className="kpi-card kpi-detail tone-blue"><div className="kpi-head"><span><b className="kpi-icon">播</b>近30日播放</span><i>每日 · 分账号</i></div><strong>{stats.views.toLocaleString()}</strong><MetricScroller rows={dailyAccounts} field="views"/></article>
             <article className="kpi-card kpi-detail tone-green"><div className="kpi-head"><span><b className="kpi-icon">客</b>近30日线索</span><i>每日 · 分账号</i></div><strong>{stats.leads.toLocaleString()}</strong><MetricScroller rows={dailyAccounts} field="leads"/></article>
             <article className="kpi-card kpi-detail tone-coral revenue"><div className="kpi-head"><span><b className="kpi-icon">¥</b>近30日收入</span><i>每日 · 分账号</i></div><strong>¥ {stats.revenue.toLocaleString()}</strong><MetricScroller rows={dailyAccounts} field="revenue"/></article>
@@ -92,7 +93,7 @@ export default function DashboardClient({ userName = "用户", ipName = "个人I
           </section>
 
           <section className="card top-content"><div className="card-title"><div><h3>高表现作品</h3><p>按真实播放量排序</p></div><Link href="/accounts">录入作品 →</Link></div><div className="table"><div className="tr th"><span>作品</span><span>平台</span><span>播放</span><span>互动</span><span>收入</span></div>{topContents.length ? topContents.map((item, i) => <div className="tr" key={item.id}><span className="content-name"><i>{i + 1}</i><b>{item.title}</b></span><span><b>{item.platform}</b><small>增粉 {item.followerDelta}</small></span><span><strong>{item.views.toLocaleString()}</strong></span><span><b>{(item.likes + item.saves + item.shares).toLocaleString()}</b></span><span><em>¥{item.revenue.toLocaleString()}</em></span></div>) : <div className="empty">暂无作品数据。</div>}</div></section>
-          <section className="card top-content"><div className="card-title"><div><h3>各账号增长看板</h3><p>点击账号进入作品和趋势明细</p></div></div><div className="account-growth-grid">{accountTrends.map((account) => <Link className="account-growth-card" href={`/accounts/${account.id}`} key={account.id}><b>{account.name}</b><small>{account.platform} · 总粉丝 {account.followers.toLocaleString()}</small><strong>{account.views.toLocaleString()} 播放</strong><div className="mini-stats"><span>互动 {(account.likes + account.saves + account.shares).toLocaleString()}</span><span>增粉 +{account.followerDelta.toLocaleString()}</span></div></Link>)}</div></section>
+          <section className="card top-content"><div className="card-title"><div><h3>各账号增长看板</h3><p>点击账号进入作品和趋势明细</p></div></div><div className="account-growth-grid">{accountTrends.map((account) => <Link className="account-growth-card" href={`/accounts/${account.id}`} key={account.id}><b>{account.name}</b><small>{platformLabel(account.platform)} · 总粉丝 {account.followers.toLocaleString()}</small><strong>{account.views.toLocaleString()} 播放</strong><div className="mini-stats"><span>互动 {(account.likes + account.saves + account.shares).toLocaleString()}</span><span>增粉 +{account.followerDelta.toLocaleString()}</span></div></Link>)}</div></section>
         </div>
       </section>
 
