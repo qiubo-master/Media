@@ -72,7 +72,7 @@ export const platformConnections = pgTable("platform_connections", {
   id: uuid("id").primaryKey().defaultRandom(), accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }), provider: text("provider").notNull(),
   authType: text("auth_type").notNull(), encryptedCredential: text("encrypted_credential"), scopes: jsonb("scopes"), status: text("status").notNull().default("pending"),
   expiresAt: timestamp("expires_at", { withTimezone: true }), lastError: text("last_error"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [uniqueIndex("platform_connections_account_uq").on(table.accountId)]);
 
 export const topics = pgTable("topics", {
   id: uuid("id").primaryKey().defaultRandom(), ipId: uuid("ip_id").notNull().references(() => ips.id, { onDelete: "cascade" }), title: text("title").notNull(), angle: text("angle"),

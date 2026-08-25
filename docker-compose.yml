@@ -43,6 +43,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      PLATFORM_CREDENTIAL_SECRET: ${PLATFORM_CREDENTIAL_SECRET:-}
+      PLATFORM_SYNC_ENDPOINT: ${PLATFORM_SYNC_ENDPOINT:-}
+      PLATFORM_SYNC_API_KEY: ${PLATFORM_SYNC_API_KEY:-}
     depends_on:
       db: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
