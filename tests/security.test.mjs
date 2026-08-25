@@ -22,3 +22,14 @@ test("form redirects stay on the public browser origin", async () => {
   assert.match(request, /headers:\s*\{\s*Location:/);
   assert.doesNotMatch(login, /new URL\([^)]*request\.url/);
 });
+
+test("platform credentials are encrypted and never returned to the account page", async () => {
+  const [credentials, accountPage] = await Promise.all([
+    readFile(new URL("../lib/credentials.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/accounts/[id]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(credentials, /aes-256-gcm/);
+  assert.match(credentials, /PLATFORM_CREDENTIAL_SECRET/);
+  assert.doesNotMatch(accountPage, /encryptedCredential/);
+  assert.doesNotMatch(accountPage, /defaultValue=.*password/i);
+});

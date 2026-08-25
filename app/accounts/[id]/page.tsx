@@ -2,18 +2,19 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, contents, ips, metrics } from "@/db/schema";
+import { accounts, contents, ips, metrics, platformConnections } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import SubmitButton from "@/app/components/submit-button";
 import { platformLabel } from "@/lib/platforms";
 import "../module.css";
+import "../sync.css";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string; q?: string; sort?: string }> }) {
   const user = await getCurrentUser(); if (!user) redirect("/login");
   const { id } = await params; const query = await searchParams;
-  const [account] = await db.select().from(accounts).innerJoin(ips, eq(accounts.ipId, ips.id)).where(and(eq(accounts.id, id), eq(ips.ownerId, user.id))).limit(1);
+  const [account] = await db.select().from(accounts).innerJoin(ips, eq(accounts.ipId, ips.id)).leftJoin(platformConnections, eq(platformConnections.accountId, accounts.id)).where(and(eq(accounts.id, id), eq(ips.ownerId, user.id))).limit(1);
   if (!account) notFound();
   const works = await db.select({ id: contents.id, title: contents.title, format: contents.format, publishedAt: contents.publishedAt, publishedUrl: contents.publishedUrl,
     views: sql<number>`coalesce(sum(${metrics.views}),0)`, likes: sql<number>`coalesce(sum(${metrics.likes}),0)`, saves: sql<number>`coalesce(sum(${metrics.saves}),0)`, shares: sql<number>`coalesce(sum(${metrics.shares}),0)`,
@@ -23,7 +24,8 @@ export default async function AccountDetailPage({ params, searchParams }: { para
   const daily = Array.from(dailyRows).map((row) => ({ date: String(row.date), views: Number(row.views), interactions: Number(row.interactions), followers: Number(row.followers) }));
   const keyword = (query.q || "").toLowerCase(); const filtered = works.filter((work) => !keyword || work.title.toLowerCase().includes(keyword)); if (query.sort === "oldest") filtered.reverse();
   return <main className="module-page"><header className="module-header"><div><Link href="/accounts">← 返回账号矩阵</Link><p>{platformLabel(account.accounts.platform)}</p><h1>{account.accounts.displayName || account.accounts.handle}</h1><span>录入这个账号已经发布的作品，并持续更新每条作品的真实表现。</span></div><div className="module-badge">{works.length} 条作品</div></header>
-    {query.ok && <div className="notice success">保存成功，数据看板已同步更新。</div>}{query.error && <div className="notice error">保存失败，请检查日期和必填数据。</div>}
+    {query.ok && <div className="notice success">{query.ok === "sync" ? "获取完成，最新作品和互动数据已同步。" : query.ok === "connection" ? "采集账号已安全保存，现在可以获取数据。" : "保存成功，数据看板已同步更新。"}</div>}{query.error && <div className="notice error">{query.error === "connection" ? "请先配置采集账号。" : query.error === "sync" ? `获取失败：${account.platform_connections?.lastError || "请检查采集服务配置"}` : query.error === "credential" ? "账号配置保存失败，请检查输入和加密密钥。" : "保存失败，请检查日期和必填数据。"}</div>}
+    <section className="module-card sync-panel"><div><h2>获取最新平台数据</h2><p>{account.platform_connections ? `连接状态：${account.platform_connections.status === "ready" ? "已就绪" : "异常"}。凭据已加密保存，页面不会回显密码。` : "首次使用请配置平台登录账号。生产环境更推荐使用平台官方授权令牌。"}</p>{account.accounts.lastSyncedAt && <small>上次获取：{account.accounts.lastSyncedAt.toLocaleString("zh-CN")}</small>}</div><div className="sync-actions"><details><summary>{account.platform_connections ? "更新采集账号" : "配置采集账号"}</summary><form className="credential-form" action={`/api/accounts/${id}/connection`} method="post" autoComplete="off"><input name="username" required placeholder="平台登录账号" autoComplete="off"/><input name="password" required type="password" placeholder="平台登录密码" autoComplete="new-password"/><SubmitButton>安全保存</SubmitButton></form></details><form action={`/api/accounts/${id}/sync`} method="post"><SubmitButton>立即获取最新数据</SubmitButton></form></div></section>
     <section className="module-card bulk-import"><div><h2>批量导入作品数据</h2><p>下载统一模板，按平台后台数据填写后，一次上传多条作品和每日指标。</p><Link href="/templates/content-metrics-template.csv">下载 CSV 模板</Link></div><form action={`/api/accounts/${id}/contents/import`} method="post" encType="multipart/form-data"><input name="file" type="file" accept=".csv,text/csv" required/><SubmitButton>一键导入</SubmitButton></form></section>
     <section className="trend-grid"><AccountTrend title="播放趋势" rows={daily} field="views"/><AccountTrend title="点赞·收藏·转发" rows={daily} field="interactions"/><AccountTrend title="粉丝增长" rows={daily} field="followers"/></section>
     <section className="module-workspace"><article className="module-card module-data"><h2>作品数据</h2><form className="filter-form" method="get"><input name="q" defaultValue={query.q || ""} placeholder="搜索作品标题"/><select name="sort" defaultValue={query.sort || "newest"}><option value="newest">最新发布</option><option value="oldest">最早发布</option></select><button>筛选</button></form>
