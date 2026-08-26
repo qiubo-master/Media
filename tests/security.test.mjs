@@ -33,3 +33,15 @@ test("platform credentials are encrypted and never returned to the account page"
   assert.doesNotMatch(accountPage, /encryptedCredential/);
   assert.doesNotMatch(accountPage, /defaultValue=.*password/i);
 });
+
+test("content import accepts xlsx and normalizes spreadsheet dates", async () => {
+  const [route, helper, page] = await Promise.all([
+    readFile(new URL("../app/api/accounts/[id]/contents/import/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/tabular-upload.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/accounts/[id]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(route, /readUploadedTable/);
+  assert.match(helper, /extension === "xlsx"/);
+  assert.match(helper, /serial - 25569/);
+  assert.match(page, /accept="\.xlsx,\.csv/);
+});
