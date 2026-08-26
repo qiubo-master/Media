@@ -70,13 +70,6 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - name: Connect to deployment tailnet
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
-          ping: ${{ secrets.DEPLOY_HOST }}
       - name: Validate requested resources
         env:
           APP_CPU: ${{ inputs.app_cpu }}
@@ -90,6 +83,26 @@ jobs:
           [[ "$DB_MEMORY" =~ ^(512m|1g|2g)$ ]]
           [[ "$HOST_PORT" =~ ^[0-9]{4,5}$ ]] && (( HOST_PORT >= 1024 && HOST_PORT <= 65535 ))
           [[ "$BIND_ADDRESS" == "0.0.0.0" || "$BIND_ADDRESS" == "127.0.0.1" ]]
+      - name: Build deployment images
+        if: inputs.action == 'deploy'
+        run: |
+          docker build --target migrate -t "media-platform-migrate:${GITHUB_SHA}" .
+          docker build --target runner -t "media-platform-app:${GITHUB_SHA}" .
+          docker pull postgres:17-alpine
+          docker pull nginx:1.27-alpine
+          docker save \
+            "media-platform-migrate:${GITHUB_SHA}" \
+            "media-platform-app:${GITHUB_SHA}" \
+            postgres:17-alpine \
+            nginx:1.27-alpine \
+            | gzip -1 > "/tmp/media-platform-images-${GITHUB_SHA}.tar.gz"
+      - name: Connect to deployment tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ secrets.DEPLOY_HOST }}
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -108,6 +121,7 @@ jobs:
         run: |
           tar --exclude=.git --exclude=node_modules --exclude=.next -czf /tmp/media-platform.tgz .
           scp -i ~/.ssh/deploy_key -P "$PORT" /tmp/media-platform.tgz "$USER@$HOST:/tmp/media-platform-${GITHUB_SHA}.tgz"
+          scp -i ~/.ssh/deploy_key -P "$PORT" "/tmp/media-platform-images-${GITHUB_SHA}.tar.gz" "$USER@$HOST:/tmp/media-platform-images-${GITHUB_SHA}.tar.gz"
       - name: Activate requested release
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
@@ -121,5 +135,5 @@ jobs:
           BIND_ADDRESS: ${{ inputs.bind_address }}
         run: |
           ssh -i ~/.ssh/deploy_key -p "$PORT" "$USER@$HOST" \
-            "ACTION=$ACTION RELEASE_SHA=$GITHUB_SHA ARCHIVE=/tmp/media-platform-${GITHUB_SHA}.tgz MEDIA_APP_CPU=$APP_CPU MEDIA_APP_MEMORY=$APP_MEMORY MEDIA_DATABASE_MEMORY=$DB_MEMORY MEDIA_HOST_PORT=$HOST_PORT MEDIA_BIND_ADDRESS=$BIND_ADDRESS bash -s" \
+            "ACTION=$ACTION RELEASE_SHA=$GITHUB_SHA ARCHIVE=/tmp/media-platform-${GITHUB_SHA}.tgz IMAGE_ARCHIVE=/tmp/media-platform-images-${GITHUB_SHA}.tar.gz MEDIA_APP_CPU=$APP_CPU MEDIA_APP_MEMORY=$APP_MEMORY MEDIA_DATABASE_MEMORY=$DB_MEMORY MEDIA_HOST_PORT=$HOST_PORT MEDIA_BIND_ADDRESS=$BIND_ADDRESS bash -s" \
             < ops/deploy-media.sh

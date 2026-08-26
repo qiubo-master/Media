@@ -3,6 +3,7 @@ name: media-platform
 services:
   db:
     image: postgres:17-alpine
+    pull_policy: never
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -20,6 +21,8 @@ services:
     cpus: ${MEDIA_DATABASE_CPU:-1.0}
 
   migrate:
+    image: media-platform-migrate:${MEDIA_IMAGE_TAG:-latest}
+    pull_policy: never
     build:
       context: .
       target: migrate
@@ -31,6 +34,8 @@ services:
     networks: [internal]
 
   app:
+    image: media-platform-app:${MEDIA_IMAGE_TAG:-latest}
+    pull_policy: never
     build:
       context: .
       target: runner
@@ -60,6 +65,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    pull_policy: never
     restart: unless-stopped
     ports: ["${MEDIA_BIND_ADDRESS:-0.0.0.0}:${MEDIA_HOST_PORT:-8080}:80"]
     volumes:

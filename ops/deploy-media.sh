@@ -31,13 +31,19 @@ if [[ "$ACTION" == "rollback" ]]; then
   set -a
   source "$TARGET/deploy.resources.env"
   set +a
-  if ! compose "$TARGET" up -d --build --remove-orphans; then
+  if ! compose "$TARGET" up -d --no-build --pull never --remove-orphans; then
     compose "$TARGET" ps || true
     compose "$TARGET" logs --tail=100 db migrate app nginx || true
     exit 1
   fi
 else
   validate
+  if [[ ! -s "$IMAGE_ARCHIVE" ]]; then
+    echo "Missing deployment image archive: $IMAGE_ARCHIVE" >&2
+    exit 1
+  fi
+  docker load -i "$IMAGE_ARCHIVE"
+  rm -f "$IMAGE_ARCHIVE"
   RELEASE="$ROOT/releases/$RELEASE_SHA"
   mkdir -p "$RELEASE"
   tar -xzf "$ARCHIVE" -C "$RELEASE"
@@ -48,9 +54,10 @@ MEDIA_DATABASE_CPU=1.0
 MEDIA_DATABASE_MEMORY=$MEDIA_DATABASE_MEMORY
 MEDIA_HOST_PORT=$MEDIA_HOST_PORT
 MEDIA_BIND_ADDRESS=$MEDIA_BIND_ADDRESS
+MEDIA_IMAGE_TAG=$RELEASE_SHA
 EOF
   TARGET="$RELEASE"
-  if ! compose "$TARGET" up -d --build --remove-orphans; then
+  if ! compose "$TARGET" up -d --no-build --pull never --remove-orphans; then
     compose "$TARGET" ps || true
     compose "$TARGET" logs --tail=100 db migrate app nginx || true
     exit 1

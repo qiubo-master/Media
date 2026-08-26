@@ -16,6 +16,22 @@ test("deployment keeps secrets outside source", async () => {
   assert.match(auth, /COOKIE_SECURE/);
 });
 
+test("deployment loads CI-built images without registry access on the server", async () => {
+  const [workflow, compose, deployScript] = await Promise.all([
+    readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8"),
+    readFile(new URL("../docker-compose.yml", import.meta.url), "utf8"),
+    readFile(new URL("../ops/deploy-media.sh", import.meta.url), "utf8"),
+  ]);
+  assert.match(workflow, /docker save/);
+  assert.match(workflow, /media-platform-images-\$\{GITHUB_SHA\}\.tar\.gz/);
+  assert.match(workflow, /tailscale\/github-action@v4/);
+  assert.match(compose, /MEDIA_IMAGE_TAG/);
+  assert.match(compose, /pull_policy:\s*never/);
+  assert.match(deployScript, /docker load -i/);
+  assert.match(deployScript, /--no-build --pull never/);
+  assert.doesNotMatch(deployScript, /up -d --build/);
+});
+
 test("form redirects stay on the public browser origin", async () => {
   const request = await readFile(new URL("../lib/request.ts", import.meta.url), "utf8");
   const login = await readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8");
