@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import "./module.css";
 import SubmitButton from "@/app/components/submit-button";
 import { platformLabel } from "@/lib/platforms";
+import PlatformBrand from "@/app/components/platform-brand";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
     </section>
 
     <section className="module-card full"><div className="section-title"><div><h2>账号列表</h2><p>最近一条上传记录会显示在这里。</p></div></div>
-      {!rows.length ? <div className="empty">还没有账号，请先添加第一个平台账号。</div> : <div className="account-table"><div className="account-row head"><span>账号</span><span>同步方式</span><span>粉丝</span><span>播放</span><span>互动</span><span>线索</span><span>操作</span></div>{rows.map((account) => { const metric = latestByAccount.get(account.id); return <Link className="account-row account-link" href={`/accounts/${account.id}`} key={account.id}><span><b>{account.displayName || account.handle}</b><small>{platformLabel(account.platform)} · 点击进入作品数据</small></span><span><i className={account.syncMode === "api" ? "api" : "manual"}>{account.syncMode === "api" ? "API 自动" : "手工上传"}</i></span><span>{metric?.followers?.toLocaleString() ?? account.followers.toLocaleString()}</span><span>{metric?.views?.toLocaleString() ?? "—"}</span><span>{metric?.engagements?.toLocaleString() ?? "—"}</span><span>{metric?.leads?.toLocaleString() ?? "—"}</span><span>录入作品 →</span></Link>})}</div>}
+      {!rows.length ? <div className="empty">还没有账号，请先添加第一个平台账号。</div> : <div className="account-table"><div className="account-row head"><span>账号</span><span>录入方式</span><span>粉丝</span><span>播放</span><span>互动</span><span>线索</span><span>操作</span></div>{rows.map((account) => { const metric = latestByAccount.get(account.id); return <Link className={`account-row account-link account-platform-${account.platform}`} href={`/accounts/${account.id}`} key={account.id}><span className="account-identity"><PlatformBrand platform={account.platform} compact/><span><b>{account.displayName || account.handle}</b><small>{account.handle} · 点击进入作品数据</small></span></span><span><i className="manual">作品导入</i></span><span>{metric?.followers?.toLocaleString() ?? account.followers.toLocaleString()}</span><span>{metric?.views?.toLocaleString() ?? "—"}</span><span>{metric?.engagements?.toLocaleString() ?? "—"}</span><span>{metric?.leads?.toLocaleString() ?? "—"}</span><span>管理作品 →</span></Link>})}</div>}
     </section>
 
     <section className="module-card full"><h2>最近导入记录</h2>{!imports.length ? <div className="empty">暂无导入记录。</div> : <div className="import-list">{imports.map((batch) => <div key={batch.id}><span><b>{batch.fileName}</b><small>{batch.createdAt.toLocaleString("zh-CN")}</small></span><span>{batch.successCount}/{batch.rowCount} 行成功</span><i className={batch.status}>{batch.status === "completed" ? "已完成" : batch.status}</i></div>)}</div>}</section>

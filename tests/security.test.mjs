@@ -61,3 +61,18 @@ test("content import accepts xlsx and normalizes spreadsheet dates", async () =>
   assert.match(helper, /serial - 25569/);
   assert.match(page, /accept="\.xlsx,\.csv/);
 });
+
+test("account works can be edited and safely deleted from the platform-themed page", async () => {
+  const [page, route, brand] = await Promise.all([
+    readFile(new URL("../app/accounts/[id]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/accounts/[id]/contents/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/platform-brand.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /action" value="update"/);
+  assert.match(page, /DeleteContentButton/);
+  assert.doesNotMatch(page, /获取最新平台数据/);
+  assert.ok(page.indexOf("module-workspace") < page.indexOf("bulk-import"));
+  assert.match(route, /data\.get\("action"\) === "delete"/);
+  assert.match(route, /eq\(contents\.accountId, id\)/);
+  assert.match(brand, /platformMarks/);
+});
