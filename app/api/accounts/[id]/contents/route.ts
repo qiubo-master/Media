@@ -16,6 +16,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (data.get("action") === "content") {
       const title = String(data.get("title") || "").trim(); const publishedDate = String(data.get("publishedDate") || ""); if (!title || !publishedDate) return seeOther(`/accounts/${id}?error=input`);
       await db.insert(contents).values({ ipId: (await db.select({ ipId: accounts.ipId }).from(accounts).where(eq(accounts.id, id)).limit(1))[0].ipId, accountId: id, title, status: "published", format: String(data.get("format") || "短视频"), publishedUrl: String(data.get("publishedUrl") || "") || null, publishedAt: new Date(`${publishedDate}T12:00:00+08:00`) });
+    } else if (data.get("action") === "update") {
+      const contentId = String(data.get("contentId") || ""); const title = String(data.get("title") || "").trim(); const publishedDate = String(data.get("publishedDate") || "");
+      const [work] = await db.select({ id: contents.id }).from(contents).where(and(eq(contents.id, contentId), eq(contents.accountId, id))).limit(1);
+      if (!work || !title || !/^\d{4}-\d{2}-\d{2}$/.test(publishedDate)) return seeOther(`/accounts/${id}?error=input`);
+      await db.update(contents).set({ title, format: String(data.get("format") || "短视频"), publishedUrl: String(data.get("publishedUrl") || "") || null, publishedAt: new Date(`${publishedDate}T12:00:00+08:00`), updatedAt: new Date() }).where(eq(contents.id, contentId));
+      return seeOther(`/accounts/${id}?ok=updated`);
+    } else if (data.get("action") === "delete") {
+      const contentId = String(data.get("contentId") || "");
+      const [work] = await db.select({ id: contents.id }).from(contents).where(and(eq(contents.id, contentId), eq(contents.accountId, id))).limit(1);
+      if (!work) return seeOther(`/accounts/${id}?error=input`);
+      await db.transaction(async (tx) => {
+        const [totals] = await tx.select({ followerDelta: sql<number>`coalesce(sum(${metrics.followerDelta}),0)` }).from(metrics).where(eq(metrics.contentId, contentId));
+        await tx.delete(contents).where(and(eq(contents.id, contentId), eq(contents.accountId, id)));
+        const followerDelta = Number(totals.followerDelta); if (followerDelta) await tx.update(accounts).set({ followers: sql`greatest(0, ${accounts.followers} - ${followerDelta})`, updatedAt: new Date() }).where(eq(accounts.id, id));
+      });
+      return seeOther(`/accounts/${id}?ok=deleted`);
     } else if (data.get("action") === "metric") {
       const contentId = String(data.get("contentId") || ""); const metricDate = String(data.get("metricDate") || "");
       const [work] = await db.select({ id: contents.id }).from(contents).where(and(eq(contents.id, contentId), eq(contents.accountId, id))).limit(1); if (!work || !/^\d{4}-\d{2}-\d{2}$/.test(metricDate)) return seeOther(`/accounts/${id}?error=input`);
