@@ -70,6 +70,13 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+      - name: Connect to deployment tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ secrets.DEPLOY_HOST }}
       - name: Validate requested resources
         env:
           APP_CPU: ${{ inputs.app_cpu }}
