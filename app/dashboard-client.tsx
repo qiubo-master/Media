@@ -59,7 +59,7 @@ export default function DashboardClient({ userName = "用户", ipName = "个人I
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">AI</span><div><strong>自媒体中台</strong><small>Creator OS</small></div></div>
+        <div className="brand"><span className="brand-mark">序</span><div><strong>序章智媒</strong><small>MEDIA INTELLIGENCE</small></div></div>
         <button className="workspace"><span className="avatar">{userName.slice(0, 1)}</span><span><b>{ipName}</b><small>{userName} · 个人空间</small></span><i>⌄</i></button>
         <nav>
           <p className="nav-label">工作空间</p>
@@ -73,10 +73,10 @@ export default function DashboardClient({ userName = "用户", ipName = "个人I
       </aside>
 
       <section className="content">
-        <header className="topbar"><div><span className="status-dot" />所有账号运行正常</div><div className="top-actions"><button aria-label="搜索">⌕</button><button aria-label="通知">♢<i /></button><button onClick={() => setPanel(true)} className="model-pill"><span>✦</span>{providers.find(p => p.id === provider)?.name} · {model}<b>⌄</b></button><span className="user-avatar">{userName.slice(0, 1)}</span></div></header>
+        <header className="topbar"><div><span className="status-dot" />数据服务运行正常 <small>· 实时经营视图</small></div><div className="top-actions"><button aria-label="搜索">⌕</button><button aria-label="通知">♢<i /></button><button onClick={() => setPanel(true)} className="model-pill"><span>✦</span>{providers.find(p => p.id === provider)?.name} · {model}<b>⌄</b></button><span className="user-avatar">{userName.slice(0, 1)}</span></div></header>
 
         <div className="page">
-          <div className="welcome"><div><p>你的内容经营工作台</p><h1>你好，{userName} <span>👋</span></h1><h2>{ipName} 的真实经营数据与增长趋势。</h2></div><div className="range"><button className="active">近30天</button></div></div>
+          <div className="welcome"><div><p>EXECUTIVE OVERVIEW</p><h1>{ipName} 经营驾驶舱</h1><h2>你好，{userName}。聚合内容表现、用户增长与商业转化。</h2></div><div className="range"><button className="active">近 30 天</button></div></div>
 
           <section className="hero-grid">
             <article className="kpi-card kpi-detail tone-purple"><div className="kpi-head"><span><b className="kpi-icon">人</b>总粉丝</span><i>各平台当前值</i></div><strong>{stats.followers.toLocaleString()}</strong><div className="follower-accounts">{accountTrends.map((account, index) => <span key={account.id}><i className={`account-dot tone-${index % 5}`}/><small>{account.name}<em>{platformLabel(account.platform)}</em></small><b>{account.followers.toLocaleString()}</b></span>)}</div></article>

@@ -23,7 +23,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
   const imports = await db.select().from(importBatches).where(eq(importBatches.ownerId, user.id)).orderBy(desc(importBatches.createdAt)).limit(8);
 
   return <main className="module-page">
-    <header className="module-header"><div><Link href="/">← 返回经营总览</Link><p>账号矩阵</p><h1>平台账号与每日数据</h1><span>能通过官方 API 获取的平台可自动同步，其余平台每天上传 CSV 即可进入统一分析。</span></div><div className="module-badge">{rows.length} 个账号</div></header>
+    <header className="module-header"><div><Link href="/">← 返回经营总览</Link><p>CHANNEL PORTFOLIO</p><h1>全平台账号矩阵</h1><span>集中管理各平台作品、经营指标与增长表现。</span></div><div className="module-badge">{rows.length} 个账号</div></header>
     {params.ok && <div className="notice success">操作成功，数据已保存。</div>}
     {params.error && <div className="notice error">{params.error === "csv" ? "CSV 格式不正确，请使用页面提供的字段。" : "操作失败，请检查输入后重试。"}</div>}
 
